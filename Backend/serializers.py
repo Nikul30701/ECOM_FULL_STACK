@@ -74,3 +74,50 @@ class CartItemSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"quantity": f"Only {product.stock} items available in stock."})
         return attrs
         
+
+class CartSerializer(serializers.ModelSerializer):
+    items = CartItemSerializer(many=True, read_only=True)
+    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    
+    class Meta:
+        model = Cart
+        fields = ['id', 'user', 'items', 'total_price', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class OrderItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True)
+    subtotal = serializers.DecimalField(max_digit=10, decimal_places=2)
+
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'product', 'product_name', 'quantity', 'price', 'subtotal']
+        read_only_fields = ['id']
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'user_email', 'status', 'payment_status', 
+                    'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country',
+                    'total_amount', 'tax_amount', 'items', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+
+class CreateOrderSerializer(serializers.ModelSerializer):
+    shipped_address = serializers.CharField(max_length = 400)
+    shipped_city = serializers.CharField(max_length=100)
+    shipped_zip = serializers.CharField(max_length=20)
+    shipped_country = serializers.CharField(max_length=100)
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ['id', 'user', 'phone', 'address', 'city', 'zip_code', 'country']
+        read_only_fields = ['id']
