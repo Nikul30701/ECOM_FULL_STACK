@@ -35,7 +35,7 @@ class ProductSerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='category.name')
 
     class Meta:
-        models = Product
+        model = Product
         fields = ['id', 'name', 'description', 'price', 'category', 'category_name', 
                     'stock', 'image', 'is_active', 'is_in_stock', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at']
@@ -87,7 +87,7 @@ class CartSerializer(serializers.ModelSerializer):
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
-    subtotal = serializers.DecimalField(max_digit=10, decimal_places=2)
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         model = OrderItem
