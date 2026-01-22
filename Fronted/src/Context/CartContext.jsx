@@ -14,7 +14,10 @@ const cartReducer = (state, action) => {
             return {...state, items: [...state.items, {...action.payload, quantity: 1}]}
         
         case 'REMOVE_FROM_CART':
-            return { ...state, items:state.items.filter(item => item.id !== action.payload.id)}
+            return {
+                ...state,
+                items: state.items.filter(item => item.id !== action.payload)
+            };
 
         case 'UPDATE_QUANTITY':
             return {
@@ -36,7 +39,7 @@ const cartReducer = (state, action) => {
     }
 }
 
-const CartProvider = ({children}) => {
+export const CartProvider = ({children}) => {
     const [state, dispatch] = useReducer(cartReducer, {items:[]})
 
     useEffect(() => {
@@ -66,7 +69,7 @@ const CartProvider = ({children}) => {
     )
 }
 
-const useCart = () => {
+export const useCart = () => {
     const context = useContext(CartContext);
     if (!context) {
         throw new Error('useCart must be used within a CartProvider')
@@ -75,4 +78,3 @@ const useCart = () => {
 }
     
 
-export default CartProvider;

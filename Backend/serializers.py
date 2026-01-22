@@ -70,7 +70,7 @@ class CartItemSerializer(serializers.ModelSerializer):
     
     def validate(self, attrs):
         product = Product.objects.get(id=attrs['product_id'])
-        if attrs['qauantity'] > product.stock:
+        if attrs['quantity'] > product.stock:
             raise serializers.ValidationError({"quantity": f"Only {product.stock} items available in stock."})
         return attrs
         
@@ -85,7 +85,7 @@ class CartSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class OrderItemSerializer(serializers.ModelSerializer):
+class OrderItemSerializer(serializer.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
 
@@ -102,22 +102,9 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'user', 'user_email', 'status', 'payment_status', 
-                    'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country',
-                    'total_amount', 'tax_amount', 'items', 'created_at', 'updated_at']
+                  'shipping_address', 'shipping_city', 'shipping_zip', 'shipping_country',
+                  'total_amount', 'tax_amount', 'items', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
 
-class CreateOrderSerializer(serializers.ModelSerializer):
-    shipped_address = serializers.CharField(max_length = 400)
-    shipped_city = serializers.CharField(max_length=100)
-    shipped_zip = serializers.CharField(max_length=20)
-    shipped_country = serializers.CharField(max_length=100)
-
-
-class UserProfileSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = UserProfile
-        fields = ['id', 'user', 'phone', 'address', 'city', 'zip_code', 'country']
-        read_only_fields = ['id']
+class CreateOrderSerializer(serial)

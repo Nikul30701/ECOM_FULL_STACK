@@ -66,7 +66,15 @@ class ProductViewSet(viewsets.ModelViewSet):
 class CartViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
 
+    # Get request - retrieve cart
     def list(self, request):
+        cart, created = Cart.objects.get_or_create(user=request.user)
+        serializer = CartSerializer(cart)
+        return Response(serializer.data)
+
+    # Post request - add item to cart
+    @action(detail=False, methods=['post'])
+    def add_item(self, request):
         cart, created = Cart.objects.get_or_create(user=request.user)
         product_id = request.data.get('product_id')
         quantity = int(request.data.get('quantity', 1))
@@ -124,12 +132,12 @@ class CartViewSet(viewsets.ViewSet):
         try:
             cart_item = CartItem.objects.get(id=item_id, cart=cart)
             cart_item.delete()
-        except CartItem.DoesnotExist:
+        except CartItem.DoesNotExist:
             return Response({'error': "Item not found in cart"}, 
                             status=status.HTTP_404_NOT_FOUND)   
 
-        serilizer = CartSerializer(cart)
-        return Response(serializers.data)
+        serializer = CartSerializer(cart)
+        return Response(serializer.data)
 
     @action(detail=False, methods=['post'])
     def clear(self, request):
@@ -173,7 +181,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         try:
             payment_intent = stripe.PaymentIntent.create(
                 amount=int(total * 100),
-                currency='ind',
+                currency='inr',
                 metadata={'user_id':request.user.id}
             )
         except stripe.error.StripeError as e:
@@ -215,7 +223,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             "client_secret":payment_intent.client_secret
         }, status=status.HTTP_201_CREATED)
 
-    @action(detail=True, methods=['patch'], permission_classes=[IsAuthenticated])
+    @action(detail=True, methods=['patch'], permission_classes=[IsAdminUser])
     def update_status(self, request, pk=None):
         order = self.get_object()
         new_status = request.data.get('status')
@@ -276,9 +284,12 @@ def stripe_webhook(request):
     
     if event['type'] == 'payment_intent.succeeded':
         payment_intent = event['data']['object']
-        order = Order.objects.get(stripe_payment_intent=payment_intent.id)
-        order.payment_status = 'completed'
-        order.save()
+        try:
+            order = Order.objects.get(stripe_payment_intent=payment_intent['id'])
+            order.payment_status = 'completed'
+            order.save()
+        except Order.DoesNotExist:
+            return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
     
     return Response(status=status.HTTP_200_OK)
     
