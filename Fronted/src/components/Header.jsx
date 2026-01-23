@@ -3,10 +3,10 @@ import { Home, ShoppingBag, ShoppingCart, User } from 'lucide-react'
 
 const Header = ({currentUser, onLogout, onNavigate, cartCount}) => {
     return (
-        <header className='bg-white text-[#1b1b1b] fixed w-full z-10'>
-            <div className='container max-auto px-4 py-4'>
+        <header className='bg-white text-[#1b1b1b] fixed w-full top-0 left-0 z-5'>
+            <div className='container mx-auto px-4 py-4'>
                 <div className='flex justify-between items-center'>
-                    <div className='flex items-center gap-3 hover:text-indigo-600 transition'>
+                    <div className='flex items-center gap-3 hover:text-purple-600 transition'>
                         <ShoppingBag  />
                         <h1 className='text-2xl font-bold'>ShopCom</h1>
                     </div>

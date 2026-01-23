@@ -137,3 +137,36 @@ class UserProfile(models.Model):
     
     def __str__(self):
         return f"Profile - {self.user.username}"
+
+
+class Payment(models.Model):
+    PAYMENT_METHOD_CHOICES = [
+        ('credit_card', 'Credit Card'),
+        ('debit_card', 'Debit Card'),
+        ('upi', 'UPI'),
+        ('net_banking', 'Net Banking'),
+        ('cash_on_delivery', 'Cash on Delivery'),
+    ]
+    
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='payment')
+    transaction_id = models.CharField(max_length=100, unique=True)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='pending')
+    
+    # Card details (for fake payment - not real)
+    card_number = models.CharField(max_length=4, blank=True)  # Last 4 digits only
+    card_holder_name = models.CharField(max_length=100, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Payment {self.transaction_id} - {self.status}"

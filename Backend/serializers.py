@@ -85,7 +85,7 @@ class CartSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
 
-class OrderItemSerializer(serializer.ModelSerializer):
+class OrderItemSerializer(serializers.ModelSerializer):
     product_name = serializers.CharField(source='product.name', read_only=True)
     subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
 
@@ -107,4 +107,33 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
 
-class CreateOrderSerializer(serial)
+class CreateOrderSerializer(serializers.Serializer):
+    shipping_address = serializers.CharField(max_length=500)
+    shipping_city = serializers.CharField(max_length=100)
+    shipping_zip = serializers.CharField(max_length=20)
+    shipping_country = serializers.CharField(max_length=100)
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    
+    class Meta:
+        model = UserProfile
+        fields = ['id', 'user', 'phone', 'address', 'city', 'zip_code', 'country']
+        read_only_fields = ['id']
+
+
+class PaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ['id', 'transaction_id', 'payment_method', 'amount', 'status', 
+                  'card_number', 'card_holder_name', 'created_at']
+        read_only_fields = ['id', 'transaction_id', 'created_at']
+
+class ProcessPaymentSerializer(serializers.Serializer):
+    order_id = serializers.IntegerField()
+    payment_method = serializers.ChoiceField(choices=Payment.PAYMENT_METHOD_CHOICES)
+    card_number = serializers.CharField(max_length=16, required=False)
+    card_holder_name = serializers.CharField(max_length=100, required=False)
+    cvv = serializers.CharField(max_length=3, required=False)
+    expiry_date = serializers.CharField(max_length=5, required=False)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)

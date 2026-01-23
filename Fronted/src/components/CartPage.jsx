@@ -49,7 +49,7 @@ const CartPage = ({ onNavigate }) => {
           <p className="text-gray-600 mb-6 text-lg">Thank you for your purchase. Your order has been placed successfully.</p>
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-6 mb-8">
             <p className="text-sm text-gray-500 mb-2">Order ID</p>
-            <p className="text-2xl font-bold text-purple-600">#{Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+            <p className="text-2xl font-bold text-purple-600">#{order.order_id}</p>
           </div>
           <button
             onClick={() => {

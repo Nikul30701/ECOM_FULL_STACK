@@ -5,14 +5,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from django.contrib.auth.models import User
 from django.db import transaction
-import stripe 
 from django.conf import settings
 from .models import *
 from .serializers import *
 from .permissions import *
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -52,7 +48,7 @@ class ProductViewSet(viewsets.ModelViewSet):
 
         return queryset
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, permission_classes=[IsAdminUser],  methods=['get'])
     def low_stock(self,request):
         """ Admin endpoint to view products with low stock """
         if not request.user.is_staff:
@@ -159,13 +155,17 @@ class OrderViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def create(self, request):
         cart = get_object_or_404(Cart, user=request.user)
+
         if not cart.items.exists():
-            return Response({'error': 'Cart is empty'}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                {'error': 'Cart is empty'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         shipping_serializer = CreateOrderSerializer(data=request.data)
-        if not shipping_serializer.is_valid():
-            return Response(shipping_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+        shipping_serializer.is_valid(raise_exception=True)
+
+        # stock validation
         for item in cart.items.all():
             if item.quantity > item.product.stock:
                 return Response(
@@ -174,22 +174,9 @@ class OrderViewSet(viewsets.ModelViewSet):
                 )
 
         subtotal = cart.total_price
-        tax = subtotal * 0.1 # 10%tax
+        tax = subtotal * 0.1
         total = subtotal + tax
 
-        # create stripe payment intent
-        try:
-            payment_intent = stripe.PaymentIntent.create(
-                amount=int(total * 100),
-                currency='inr',
-                metadata={'user_id':request.user.id}
-            )
-        except stripe.error.StripeError as e:
-            return Response({
-                "error": str(e)
-            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-        # create order
         order = Order.objects.create(
             user=request.user,
             shipping_address=shipping_serializer.validated_data['shipping_address'],
@@ -198,30 +185,23 @@ class OrderViewSet(viewsets.ModelViewSet):
             shipping_country=shipping_serializer.validated_data['shipping_country'],
             total_amount=total,
             tax_amount=tax,
-            stripe_payment_intent=payment_intent.id,
+            payment_status='pending'
         )
 
-        # Create order items and update stock
-        for cart_item in cart.items.all():
+        for item in cart.items.all():
             OrderItem.objects.create(
                 order=order,
-                product=cart_item.product,
-                quantity=cart_item.quantity,
-                price=cart_item.product.price,
+                product=item.product,
+                quantity=item.quantity,
+                price=item.product.price
             )
 
-            # Update stock
-            cart_item.product.stock -= cart_item.quantity
-            cart_item.product.save()
-
-        # clear Cart
         cart.items.all().delete()
 
-        serializer = OrderSerializer(order)
-        return Response({
-            "order":serializer.data,
-            "client_secret":payment_intent.client_secret
-        }, status=status.HTTP_201_CREATED)
+        return Response(
+            OrderSerializer(order).data,
+            status=status.HTTP_201_CREATED
+        )
 
     @action(detail=True, methods=['patch'], permission_classes=[IsAdminUser])
     def update_status(self, request, pk=None):
@@ -267,29 +247,28 @@ class OrderViewSet(viewsets.ModelViewSet):
             "daily_sales": list(daily_sales)
         })
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def stripe_webhook(request):
-    payload = request.body
-    sig_header = request.META.get('HTTP_STRIPE_SIGNATURE')
-    
-    try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
+    def confirm_payment(self, request, pk=None):
+        order = get_object_or_404(
+            Order,
+            id=pk,
+            user=request.user,
+            payment_status='pending'
         )
-    except ValueError:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-    except stripe.error.SignatureVerificationError:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
-    
-    if event['type'] == 'payment_intent.succeeded':
-        payment_intent = event['data']['object']
-        try:
-            order = Order.objects.get(stripe_payment_intent=payment_intent['id'])
-            order.payment_status = 'completed'
-            order.save()
-        except Order.DoesNotExist:
-            return Response({'error': 'Order not found'}, status=status.HTTP_404_NOT_FOUND)
-    
-    return Response(status=status.HTTP_200_OK)
+
+        # simulate payment success
+        order.payment_status = 'completed'
+        order.save()
+
+        # reduce stock AFTER payment
+        for item in order.items.all():
+            product = item.product
+            product.stock -= item.quantity
+            product.save()
+
+        return Response({
+            "message": "Payment successful",
+            "order_id": order.id
+        })
     
